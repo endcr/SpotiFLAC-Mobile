@@ -56,9 +56,6 @@ type progressBridgeState struct {
 }
 
 var (
-	downloadDir   string
-	downloadDirMu sync.RWMutex
-
 	multiProgress       = MultiProgress{Items: make(map[string]*ItemProgress)}
 	multiMu             sync.RWMutex
 	multiProgressDirty  = true
@@ -368,9 +365,6 @@ func ClearAllItemProgress() {
 }
 
 func setDownloadDir(path string) error {
-	downloadDirMu.Lock()
-	defer downloadDirMu.Unlock()
-	downloadDir = path
 	return nil
 }
 

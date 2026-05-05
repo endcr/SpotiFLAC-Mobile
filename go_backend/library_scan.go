@@ -276,16 +276,8 @@ func ScanLibraryFolder(folderPath string) (string, error) {
 	return string(jsonBytes), nil
 }
 
-func scanAudioFile(filePath, scanTime string) (*LibraryScanResult, error) {
-	return scanAudioFileWithKnownModTimeAndDisplayName(filePath, "", scanTime, 0)
-}
-
 func scanAudioFileWithKnownModTime(filePath, scanTime string, knownModTime int64) (*LibraryScanResult, error) {
 	return scanAudioFileWithKnownModTimeAndDisplayNameAndCoverCacheKey(filePath, "", "", scanTime, knownModTime)
-}
-
-func scanAudioFileWithKnownModTimeAndDisplayName(filePath, displayNameHint, scanTime string, knownModTime int64) (*LibraryScanResult, error) {
-	return scanAudioFileWithKnownModTimeAndDisplayNameAndCoverCacheKey(filePath, displayNameHint, "", scanTime, knownModTime)
 }
 
 func scanAudioFileWithKnownModTimeAndDisplayNameAndCoverCacheKey(filePath, displayNameHint, coverCacheKey, scanTime string, knownModTime int64) (*LibraryScanResult, error) {

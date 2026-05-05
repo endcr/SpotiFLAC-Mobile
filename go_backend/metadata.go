@@ -1150,17 +1150,6 @@ func readM4ATextValue(f *os.File, parent atomHeader, fileSize int64) (string, er
 	return strings.TrimSpace(strings.TrimRight(string(payload), "\x00")), nil
 }
 
-func readM4AIndexValue(f *os.File, parent atomHeader, fileSize int64) (int, error) {
-	payload, err := readM4ADataPayload(f, parent, fileSize)
-	if err != nil {
-		return 0, err
-	}
-	if len(payload) < 4 {
-		return 0, fmt.Errorf("index payload too short in %s", parent.typ)
-	}
-	return int(binary.BigEndian.Uint16(payload[2:4])), nil
-}
-
 func readM4AIndexPair(f *os.File, parent atomHeader, fileSize int64) (int, int, error) {
 	payload, err := readM4ADataPayload(f, parent, fileSize)
 	if err != nil {

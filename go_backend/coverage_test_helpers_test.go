@@ -399,13 +399,3 @@ func createTestExtensionPackage(t *testing.T, path, name, version, js string, ex
 		}
 	}
 }
-
-func buildRawAPEItem(key, value string, flags uint32) []byte {
-	var buf bytes.Buffer
-	_ = binary.Write(&buf, binary.LittleEndian, uint32(len(value)))
-	_ = binary.Write(&buf, binary.LittleEndian, flags)
-	buf.WriteString(key)
-	buf.WriteByte(0)
-	buf.WriteString(value)
-	return buf.Bytes()
-}

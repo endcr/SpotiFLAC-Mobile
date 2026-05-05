@@ -3333,11 +3333,7 @@ func (p *extensionProviderWrapper) FetchLyrics(trackName, artistName, albumName 
 	}
 
 	for _, line := range extResult.Lines {
-		response.Lines = append(response.Lines, LyricsLine{
-			StartTimeMs: line.StartTimeMs,
-			Words:       line.Words,
-			EndTimeMs:   line.EndTimeMs,
-		})
+		response.Lines = append(response.Lines, LyricsLine(line))
 	}
 
 	if len(response.Lines) == 0 && response.PlainLyrics != "" && !response.Instrumental {

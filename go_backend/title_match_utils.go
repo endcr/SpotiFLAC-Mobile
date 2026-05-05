@@ -138,11 +138,7 @@ func artistsMatch(expectedArtist, foundArtist string) bool {
 		}
 	}
 
-	if isLatinScript(expectedArtist) != isLatinScript(foundArtist) {
-		return true
-	}
-
-	return false
+	return isLatinScript(expectedArtist) != isLatinScript(foundArtist)
 }
 
 func splitArtists(artists string) []string {

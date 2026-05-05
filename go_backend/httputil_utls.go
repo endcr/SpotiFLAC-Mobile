@@ -10,16 +10,13 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 
 	utls "github.com/refraction-networking/utls"
 	"golang.org/x/net/http2"
 )
 
 type utlsTransport struct {
-	dialer       *net.Dialer
-	mu           sync.Mutex
-	h2Transports map[string]*http2.Transport
+	dialer *net.Dialer
 }
 
 func newUTLSTransport() *utlsTransport {
@@ -28,7 +25,6 @@ func newUTLSTransport() *utlsTransport {
 			Timeout:   30 * Second,
 			KeepAlive: 30 * Second,
 		},
-		h2Transports: make(map[string]*http2.Transport),
 	}
 }
 

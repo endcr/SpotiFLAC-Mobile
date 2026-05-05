@@ -157,12 +157,12 @@ func (m *extensionManager) SetDirectories(extensionsDir, dataDir string) error {
 
 func (m *extensionManager) LoadExtensionFromFile(filePath string) (*loadedExtension, error) {
 	if !strings.HasSuffix(strings.ToLower(filePath), ".spotiflac-ext") {
-		return nil, fmt.Errorf("Invalid file format. Please select a .spotiflac-ext file")
+		return nil, fmt.Errorf("invalid file format: please select a .spotiflac-ext file")
 	}
 
 	zipReader, err := zip.OpenReader(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot open extension file. The file may be corrupted or not a valid extension package")
+		return nil, fmt.Errorf("cannot open extension file: the file may be corrupted or not a valid extension package")
 	}
 	defer zipReader.Close()
 
@@ -187,16 +187,16 @@ func (m *extensionManager) LoadExtensionFromFile(filePath string) (*loadedExtens
 	}
 
 	if manifestData == nil {
-		return nil, fmt.Errorf("Invalid extension package: manifest.json not found")
+		return nil, fmt.Errorf("invalid extension package: manifest.json not found")
 	}
 
 	if !hasIndexJS {
-		return nil, fmt.Errorf("Invalid extension package: index.js not found")
+		return nil, fmt.Errorf("invalid extension package: index.js not found")
 	}
 
 	manifest, err := ParseManifest(manifestData)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid extension manifest: %w", err)
+		return nil, fmt.Errorf("invalid extension manifest: %w", err)
 	}
 
 	m.mu.RLock()
@@ -214,9 +214,9 @@ func (m *extensionManager) LoadExtensionFromFile(filePath string) (*loadedExtens
 		if versionCompare > 0 {
 			return m.UpgradeExtension(filePath)
 		} else if versionCompare == 0 {
-			return nil, fmt.Errorf("Extension '%s' v%s is already installed", existingDisplayName, existingVersion)
+			return nil, fmt.Errorf("extension '%s' v%s is already installed", existingDisplayName, existingVersion)
 		} else {
-			return nil, fmt.Errorf("Cannot downgrade '%s' from v%s to v%s", existingDisplayName, existingVersion, manifest.Version)
+			return nil, fmt.Errorf("cannot downgrade '%s' from v%s to v%s", existingDisplayName, existingVersion, manifest.Version)
 		}
 	}
 
@@ -224,7 +224,7 @@ func (m *extensionManager) LoadExtensionFromFile(filePath string) (*loadedExtens
 	defer m.mu.Unlock()
 
 	if _, exists := m.extensions[manifest.Name]; exists {
-		return nil, fmt.Errorf("Extension '%s' was installed by another process", manifest.DisplayName)
+		return nil, fmt.Errorf("extension '%s' was installed by another process", manifest.DisplayName)
 	}
 
 	extDir := filepath.Join(m.extensionsDir, manifest.Name)
@@ -426,7 +426,7 @@ func initializeExtensionRuntimeWithSettings(
 ) error {
 	settingsJSON, err := json.Marshal(settings)
 	if err != nil {
-		return fmt.Errorf("Failed to save settings")
+		return fmt.Errorf("failed to save settings")
 	}
 
 	script := fmt.Sprintf(`
@@ -472,7 +472,7 @@ func initializeExtensionWithSettingsLocked(
 	settings map[string]interface{},
 ) error {
 	if ext.VM == nil {
-		return fmt.Errorf("Extension failed to load. Please reinstall the extension")
+		return fmt.Errorf("extension failed to load: please reinstall the extension")
 	}
 
 	if err := initializeExtensionRuntimeWithSettings(ext.VM, ext.ID, settings); err != nil {
@@ -570,7 +570,7 @@ func (m *extensionManager) UnloadExtension(extensionID string) error {
 
 	ext, exists := m.extensions[extensionID]
 	if !exists {
-		return fmt.Errorf("Extension not found")
+		return fmt.Errorf("extension not found")
 	}
 
 	ext.VMMu.Lock()
@@ -589,7 +589,7 @@ func (m *extensionManager) GetExtension(extensionID string) (*loadedExtension, e
 
 	ext, exists := m.extensions[extensionID]
 	if !exists {
-		return nil, fmt.Errorf("Extension not found")
+		return nil, fmt.Errorf("extension not found")
 	}
 	return ext, nil
 }
@@ -611,7 +611,7 @@ func (m *extensionManager) SetExtensionEnabled(extensionID string, enabled bool)
 
 	ext, exists := m.extensions[extensionID]
 	if !exists {
-		return fmt.Errorf("Extension not found")
+		return fmt.Errorf("extension not found")
 	}
 
 	if enabled {
@@ -689,12 +689,12 @@ func (m *extensionManager) loadExtensionFromDirectory(dirPath string) (*loadedEx
 
 	manifest, err := ParseManifest(manifestData)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid extension manifest: %w", err)
+		return nil, fmt.Errorf("invalid extension manifest: %w", err)
 	}
 
 	indexPath := filepath.Join(dirPath, "index.js")
 	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("Extension is missing index.js file")
+		return nil, fmt.Errorf("extension is missing index.js file")
 	}
 
 	if existing, exists := m.extensions[manifest.Name]; exists {
@@ -757,12 +757,12 @@ func (m *extensionManager) RemoveExtension(extensionID string) error {
 // Only allows upgrades (new version > current version), not downgrades
 func (m *extensionManager) UpgradeExtension(filePath string) (*loadedExtension, error) {
 	if !strings.HasSuffix(strings.ToLower(filePath), ".spotiflac-ext") {
-		return nil, fmt.Errorf("Invalid file format. Please select a .spotiflac-ext file")
+		return nil, fmt.Errorf("invalid file format: please select a .spotiflac-ext file")
 	}
 
 	zipReader, err := zip.OpenReader(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot open extension file. The file may be corrupted or not a valid extension package")
+		return nil, fmt.Errorf("cannot open extension file: the file may be corrupted or not a valid extension package")
 	}
 	defer zipReader.Close()
 
@@ -787,16 +787,16 @@ func (m *extensionManager) UpgradeExtension(filePath string) (*loadedExtension, 
 	}
 
 	if manifestData == nil {
-		return nil, fmt.Errorf("Invalid extension package: manifest.json not found")
+		return nil, fmt.Errorf("invalid extension package: manifest.json not found")
 	}
 
 	if !hasIndexJS {
-		return nil, fmt.Errorf("Invalid extension package: index.js not found")
+		return nil, fmt.Errorf("invalid extension package: index.js not found")
 	}
 
 	newManifest, err := ParseManifest(manifestData)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid extension manifest: %w", err)
+		return nil, fmt.Errorf("invalid extension manifest: %w", err)
 	}
 
 	m.mu.RLock()
@@ -804,15 +804,15 @@ func (m *extensionManager) UpgradeExtension(filePath string) (*loadedExtension, 
 	m.mu.RUnlock()
 
 	if !exists {
-		return nil, fmt.Errorf("Extension '%s' is not installed. Use install instead of upgrade.", newManifest.DisplayName)
+		return nil, fmt.Errorf("extension '%s' is not installed; use install instead of upgrade", newManifest.DisplayName)
 	}
 
 	versionCompare := compareVersions(newManifest.Version, existing.Manifest.Version)
 	if versionCompare < 0 {
-		return nil, fmt.Errorf("Cannot downgrade extension. Current version: %s, New version: %s", existing.Manifest.Version, newManifest.Version)
+		return nil, fmt.Errorf("cannot downgrade extension: current version: %s, new version: %s", existing.Manifest.Version, newManifest.Version)
 	}
 	if versionCompare == 0 {
-		return nil, fmt.Errorf("Extension is already at version %s", existing.Manifest.Version)
+		return nil, fmt.Errorf("extension is already at version %s", existing.Manifest.Version)
 	}
 
 	GoLog("[Extension] Upgrading %s from v%s to v%s\n", newManifest.DisplayName, existing.Manifest.Version, newManifest.Version)
@@ -906,13 +906,13 @@ type ExtensionUpgradeInfo struct {
 
 func (m *extensionManager) checkExtensionUpgradeInternal(filePath string) (*ExtensionUpgradeInfo, error) {
 	if !strings.HasSuffix(strings.ToLower(filePath), ".spotiflac-ext") {
-		return nil, fmt.Errorf("Invalid file format. Please select a .spotiflac-ext file")
+		return nil, fmt.Errorf("invalid file format: please select a .spotiflac-ext file")
 	}
 
 	zipReader, err := zip.OpenReader(filePath)
 
 	if err != nil {
-		return nil, fmt.Errorf("Cannot open extension file")
+		return nil, fmt.Errorf("cannot open extension file")
 	}
 	defer zipReader.Close()
 
@@ -939,7 +939,7 @@ func (m *extensionManager) checkExtensionUpgradeInternal(filePath string) (*Exte
 
 	newManifest, err := ParseManifest(manifestData)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid manifest: %w", err)
+		return nil, fmt.Errorf("invalid manifest: %w", err)
 	}
 
 	m.mu.RLock()
@@ -1082,7 +1082,7 @@ func (m *extensionManager) InitializeExtension(extensionID string, settings map[
 
 	ext, exists := m.extensions[extensionID]
 	if !exists {
-		return fmt.Errorf("Extension not found")
+		return fmt.Errorf("extension not found")
 	}
 
 	ext.VMMu.Lock()
@@ -1100,7 +1100,7 @@ func (m *extensionManager) CleanupExtension(extensionID string) error {
 
 	ext, exists := m.extensions[extensionID]
 	if !exists {
-		return fmt.Errorf("Extension not found")
+		return fmt.Errorf("extension not found")
 	}
 
 	if ext.VM == nil {

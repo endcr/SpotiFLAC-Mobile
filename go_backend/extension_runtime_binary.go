@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/dop251/goja"
+	//lint:ignore SA1019 Blowfish is required for legacy extension crypto compatibility.
 	"golang.org/x/crypto/blowfish"
 )
 

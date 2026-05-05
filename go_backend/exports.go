@@ -2230,7 +2230,7 @@ func ConvertSpotifyToDeezer(resourceType, spotifyID string) (string, error) {
 		return string(jsonBytes), nil
 	}
 
-	return "", fmt.Errorf("Spotify to Deezer conversion only supported for tracks and albums. Please search by name for %s", resourceType)
+	return "", fmt.Errorf("spotify to Deezer conversion only supported for tracks and albums: please search by name for %s", resourceType)
 }
 
 func CheckAvailabilityFromDeezerID(deezerTrackID string) (string, error) {

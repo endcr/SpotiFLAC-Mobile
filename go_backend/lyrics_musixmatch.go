@@ -16,32 +16,6 @@ type MusixmatchClient struct {
 	baseURL    string
 }
 
-type musixmatchSearchResponse struct {
-	ID                 int64                     `json:"id"`
-	SongName           string                    `json:"songName"`
-	ArtistName         string                    `json:"artistName"`
-	AlbumName          string                    `json:"albumName"`
-	Artwork            string                    `json:"artwork"`
-	ReleaseDate        string                    `json:"releaseDate"`
-	Duration           int                       `json:"duration"`
-	URL                string                    `json:"url"`
-	AlbumID            int64                     `json:"albumId"`
-	HasSyncedLyrics    bool                      `json:"hasSyncedLyrics"`
-	HasUnsyncedLyrics  bool                      `json:"hasUnsyncedLyrics"`
-	AvailableLanguages []string                  `json:"availableLanguages"`
-	OriginalLanguage   string                    `json:"originalLanguage"`
-	SyncedLyrics       *musixmatchLyricsResponse `json:"syncedLyrics"`
-	UnsyncedLyrics     *musixmatchLyricsResponse `json:"unsyncedLyrics"`
-}
-
-type musixmatchLyricsResponse struct {
-	ID          int64  `json:"id"`
-	Duration    int    `json:"duration"`
-	Language    string `json:"language"`
-	UpdatedTime string `json:"updatedTime"`
-	Lyrics      string `json:"lyrics"`
-}
-
 func NewMusixmatchClient() *MusixmatchClient {
 	return &MusixmatchClient{
 		httpClient: NewMetadataHTTPClient(15 * time.Second),

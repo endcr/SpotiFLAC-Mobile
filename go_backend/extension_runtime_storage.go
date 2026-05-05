@@ -340,16 +340,6 @@ func (r *extensionRuntime) ensureCredentialsLoaded() error {
 	return nil
 }
 
-func (r *extensionRuntime) loadCredentials() (map[string]interface{}, error) {
-	if err := r.ensureCredentialsLoaded(); err != nil {
-		return nil, err
-	}
-
-	r.credentialsMu.RLock()
-	defer r.credentialsMu.RUnlock()
-	return cloneInterfaceMap(r.credentialsCache), nil
-}
-
 func (r *extensionRuntime) saveCredentials(creds map[string]interface{}) error {
 	data, err := json.Marshal(creds)
 	if err != nil {
