@@ -755,8 +755,8 @@ class _FilesSettingsPageState extends ConsumerState<FilesSettingsPage> {
 
     showModalBottomSheet<void>(
       context: context,
-      useRootNavigator: true,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -794,7 +794,15 @@ class _FilesSettingsPageState extends ConsumerState<FilesSettingsPage> {
                     const SizedBox(height: 8),
                     Text(
                       description ??
-                          context.l10n.downloadFilenameDescription as String,
+                          context.l10n.downloadFilenameDescription(
+                            '{album}',
+                            '{artist}',
+                            '{date}',
+                            '{disc}',
+                            '{title}',
+                            '{track}',
+                            '{year}',
+                          ),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -924,7 +932,7 @@ class _FilesSettingsPageState extends ConsumerState<FilesSettingsPage> {
           ),
         ),
       ),
-    );
+    ).whenComplete(controller.dispose);
   }
 
   void _showAlbumFolderStructurePicker(

@@ -220,14 +220,13 @@ class _ProviderPriorityPageState extends ConsumerState<ProviderPriorityPage> {
 
   Future<void> _saveChanges() async {
     await ref.read(extensionProvider.notifier).setProviderPriority(_providers);
+    if (!mounted) return;
     setState(() {
       _hasChanges = false;
     });
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.snackbarProviderPrioritySaved)),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.snackbarProviderPrioritySaved)),
+    );
   }
 }
 
@@ -294,10 +293,7 @@ class _ProviderItem extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                Icon(
-                  info.icon,
-                  color: colorScheme.secondary,
-                ),
+                Icon(info.icon, color: colorScheme.secondary),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -339,8 +335,5 @@ class _ProviderInfo {
   final String name;
   final IconData icon;
 
-  _ProviderInfo({
-    required this.name,
-    required this.icon,
-  });
+  _ProviderInfo({required this.name, required this.icon});
 }

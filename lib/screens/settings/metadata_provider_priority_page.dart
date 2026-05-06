@@ -114,14 +114,13 @@ class _MetadataProviderPriorityPageState
     await ref
         .read(extensionProvider.notifier)
         .setMetadataProviderPriority(_providers);
+    if (!mounted) return;
     setState(() {
       _hasChanges = false;
     });
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.snackbarMetadataProviderSaved)),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.snackbarMetadataProviderSaved)),
+    );
   }
 }
 
@@ -188,10 +187,7 @@ class _MetadataProviderItem extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                Icon(
-                  info.icon,
-                  color: colorScheme.secondary,
-                ),
+                Icon(info.icon, color: colorScheme.secondary),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

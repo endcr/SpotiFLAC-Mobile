@@ -1645,10 +1645,11 @@ class ExtensionNotifier extends Notifier<ExtensionState> {
   }
 
   List<String> getAllDownloadProviders() {
-    return state.extensions
-        .where((ext) => ext.enabled && ext.hasDownloadProvider)
-        .map((ext) => ext.id)
-        .toList(growable: false);
+    return _distinctProviderIds(
+      state.extensions
+          .where((ext) => ext.enabled && ext.hasDownloadProvider)
+          .map((ext) => ext.id),
+    );
   }
 
   List<String> getAllMetadataProviders() {
@@ -1662,10 +1663,22 @@ class ExtensionNotifier extends Notifier<ExtensionState> {
         .where((ext) => ext.searchBehavior?.primary != true)
         .map((ext) => ext.id);
 
-    return [
+    return _distinctProviderIds([
       ...primarySearchMetadataExtensions,
       ...otherMetadataExtensions,
-    ];
+    ]);
+  }
+
+  List<String> _distinctProviderIds(Iterable<String> ids) {
+    final seen = <String>{};
+    final result = <String>[];
+    for (final id in ids) {
+      final normalized = id.trim();
+      if (normalized.isNotEmpty && seen.add(normalized)) {
+        result.add(normalized);
+      }
+    }
+    return result;
   }
 
   List<String> _replaceRetiredBuiltInMetadataProviders(List<String> input) {
