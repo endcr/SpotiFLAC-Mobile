@@ -25,6 +25,26 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
     final hasDownloadExtensions = extensionState.extensions.any(
       (extension) => extension.enabled && extension.hasDownloadProvider,
     );
+    final selectedDownloadService = resolveEffectiveDownloadService(
+      settings.defaultService,
+      extensionState,
+    );
+    final selectedDownloadExtension = extensionState.extensions
+        .where(
+          (extension) =>
+              extension.enabled &&
+              extension.hasDownloadProvider &&
+              extension.id == selectedDownloadService,
+        )
+        .firstOrNull;
+    final qualityOptions =
+        selectedDownloadExtension?.qualityOptions ?? const <QualityOption>[];
+    final canSelectQuality = qualityOptions.isNotEmpty;
+    final isTidalService = selectedDownloadService.isNotEmpty
+        ? ref
+              .read(extensionProvider.notifier)
+              .downloadProviderMatchesBuiltIn(selectedDownloadService, 'tidal')
+        : false;
     final nativeWorkerAvailable = Platform.isAndroid && hasDownloadExtensions;
     final colorScheme = Theme.of(context).colorScheme;
     final topPadding = normalizedHeaderTopPadding(context);
@@ -101,16 +121,51 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
                   SettingsSwitchItem(
                     icon: Icons.tune,
                     title: context.l10n.downloadAskBeforeDownload,
-                    subtitle: hasDownloadExtensions
+                    subtitle: !hasDownloadExtensions
+                        ? context.l10n.extensionsNoDownloadProvider
+                        : canSelectQuality
                         ? context.l10n.downloadAskQualitySubtitle
-                        : context.l10n.extensionsNoDownloadProvider,
+                        : context.l10n.downloadSelectServiceToEnable,
                     value: settings.askQualityBeforeDownload,
-                    enabled: hasDownloadExtensions,
+                    enabled: hasDownloadExtensions && canSelectQuality,
                     onChanged: (value) => ref
                         .read(settingsProvider.notifier)
                         .setAskQualityBeforeDownload(value),
-                    showDivider: false,
                   ),
+                  if (!settings.askQualityBeforeDownload &&
+                      canSelectQuality) ...[
+                    for (final quality in qualityOptions)
+                      _QualityOption(
+                        title: _localizedQualityLabel(context, quality),
+                        subtitle: _localizedQualityDescription(
+                          context,
+                          quality,
+                        ),
+                        icon: _qualityIcon(quality.id),
+                        isSelected: settings.audioQuality == quality.id,
+                        onTap: () => ref
+                            .read(settingsProvider.notifier)
+                            .setAudioQuality(quality.id),
+                        showDivider:
+                            quality != qualityOptions.last ||
+                            (isTidalService && settings.audioQuality == 'HIGH'),
+                      ),
+                    if (isTidalService && settings.audioQuality == 'HIGH')
+                      SettingsItem(
+                        icon: Icons.tune,
+                        title: context.l10n.downloadLossyFormat,
+                        subtitle: _getTidalHighFormatLabel(
+                          context,
+                          settings.tidalHighFormat,
+                        ),
+                        onTap: () => _showTidalHighFormatPicker(
+                          context,
+                          ref,
+                          settings.tidalHighFormat,
+                        ),
+                        showDivider: false,
+                      ),
+                  ],
                 ],
               ),
             ),
@@ -264,6 +319,161 @@ class _DownloadSettingsPageState extends ConsumerState<DownloadSettingsPage> {
     final effective = normalized.isEmpty ? 'US' : normalized;
     final name = names[effective];
     return name == null ? effective : '$effective - $name';
+  }
+
+  IconData _qualityIcon(String qualityId) {
+    final normalized = qualityId.toUpperCase();
+    if (normalized.startsWith('MP3_') || normalized == 'MP3') {
+      return Icons.audiotrack;
+    }
+    if (normalized.startsWith('OPUS_') || normalized == 'OPUS') {
+      return Icons.graphic_eq;
+    }
+
+    switch (normalized) {
+      case 'HI_RES_LOSSLESS':
+        return Icons.four_k;
+      case 'HI_RES':
+        return Icons.high_quality;
+      case 'LOSSLESS':
+        return Icons.music_note;
+      default:
+        return Icons.music_note;
+    }
+  }
+
+  String _localizedQualityLabel(BuildContext context, QualityOption quality) {
+    switch (quality.id.toUpperCase()) {
+      case 'LOSSLESS':
+        return context.l10n.qualityFlacLossless;
+      case 'HI_RES':
+        return context.l10n.qualityHiResFlac;
+      case 'HI_RES_LOSSLESS':
+        return context.l10n.qualityHiResFlacMax;
+      case 'HIGH':
+        return context.l10n.downloadLossy320;
+      default:
+        return quality.label;
+    }
+  }
+
+  String _localizedQualityDescription(
+    BuildContext context,
+    QualityOption quality,
+  ) {
+    switch (quality.id.toUpperCase()) {
+      case 'LOSSLESS':
+        return context.l10n.qualityFlacLosslessSubtitle;
+      case 'HI_RES':
+        return context.l10n.qualityHiResFlacSubtitle;
+      case 'HI_RES_LOSSLESS':
+        return context.l10n.qualityHiResFlacMaxSubtitle;
+      case 'HIGH':
+        return _getTidalHighFormatLabel(
+          context,
+          ref.read(settingsProvider).tidalHighFormat,
+        );
+      default:
+        return quality.description ?? '';
+    }
+  }
+
+  String _getTidalHighFormatLabel(BuildContext context, String format) {
+    switch (format) {
+      case 'mp3_320':
+        return context.l10n.downloadLossyMp3;
+      case 'opus_256':
+        return context.l10n.downloadLossyOpus256;
+      case 'opus_128':
+        return context.l10n.downloadLossyOpus128;
+      default:
+        return context.l10n.downloadLossyMp3;
+    }
+  }
+
+  void _showTidalHighFormatPicker(
+    BuildContext context,
+    WidgetRef ref,
+    String current,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: colorScheme.surfaceContainerHigh,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+              child: Text(
+                context.l10n.downloadLossy320Format,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+              child: Text(
+                context.l10n.downloadLossy320FormatDesc,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.audiotrack),
+              title: Text(context.l10n.downloadLossyMp3),
+              subtitle: Text(context.l10n.downloadLossyMp3Subtitle),
+              trailing: current == 'mp3_320'
+                  ? Icon(Icons.check, color: colorScheme.primary)
+                  : null,
+              onTap: () {
+                ref
+                    .read(settingsProvider.notifier)
+                    .setTidalHighFormat('mp3_320');
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.graphic_eq),
+              title: Text(context.l10n.downloadLossyOpus256),
+              subtitle: Text(context.l10n.downloadLossyOpus256Subtitle),
+              trailing: current == 'opus_256'
+                  ? Icon(Icons.check, color: colorScheme.primary)
+                  : null,
+              onTap: () {
+                ref
+                    .read(settingsProvider.notifier)
+                    .setTidalHighFormat('opus_256');
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.graphic_eq),
+              title: Text(context.l10n.downloadLossyOpus128),
+              subtitle: Text(context.l10n.downloadLossyOpus128Subtitle),
+              trailing: current == 'opus_128'
+                  ? Icon(Icons.check, color: colorScheme.primary)
+                  : null,
+              onTap: () {
+                ref
+                    .read(settingsProvider.notifier)
+                    .setTidalHighFormat('opus_128');
+                Navigator.pop(context);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showNetworkModePicker(
@@ -625,6 +835,39 @@ class _BetaBadge extends StatelessWidget {
           fontWeight: FontWeight.w700,
         ),
       ),
+    );
+  }
+}
+
+class _QualityOption extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final bool showDivider;
+
+  const _QualityOption({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+    this.showDivider = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return SettingsItem(
+      icon: icon,
+      title: title,
+      subtitle: subtitle,
+      trailing: isSelected
+          ? Icon(Icons.check, color: colorScheme.primary)
+          : null,
+      onTap: onTap,
+      showDivider: showDivider,
     );
   }
 }
