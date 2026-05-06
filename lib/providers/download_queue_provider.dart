@@ -34,6 +34,76 @@ final _trimUnderscoresAndSpacesRegex = RegExp(r'^[_ ]+|[_ ]+$');
 final _multiWhitespaceRegex = RegExp(r'\s+');
 final _multiUnderscoreRegex = RegExp(r'_+');
 
+int? _readPositiveIntValue(dynamic value) {
+  if (value == null) return null;
+  if (value is num) {
+    final asInt = value.toInt();
+    return asInt > 0 ? asInt : null;
+  }
+  final parsed = int.tryParse(value.toString());
+  if (parsed == null || parsed <= 0) return null;
+  return parsed;
+}
+
+int? _readPositiveBitrateKbps(dynamic value) {
+  final parsed = _readPositiveIntValue(value);
+  if (parsed == null) return null;
+  return parsed >= 10000 ? (parsed / 1000).round() : parsed;
+}
+
+String? _audioFormatForPath(String? filePath, {String? fileName}) {
+  final candidates = <String>[?filePath, ?fileName];
+  for (final candidate in candidates) {
+    final lower = candidate.trim().toLowerCase();
+    if (lower.endsWith('.opus') || lower.endsWith('.ogg')) return 'OPUS';
+    if (lower.endsWith('.mp3')) return 'MP3';
+    if (lower.endsWith('.aac')) return 'AAC';
+    if (lower.endsWith('.m4a') || lower.endsWith('.mp4')) return 'M4A';
+  }
+  return null;
+}
+
+String? _nonPlaceholderQuality(String? quality) {
+  final normalized = normalizeOptionalString(quality);
+  if (normalized == null || isPlaceholderQualityLabel(normalized)) {
+    return null;
+  }
+  final lower = normalized.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+  const requestedLosslessLabels = {
+    'hi_res_lossless',
+    'hires_lossless',
+    'hi_res',
+    'hires',
+    'flac_best_available',
+  };
+  if (requestedLosslessLabels.contains(lower)) return null;
+  return normalized;
+}
+
+String? _resolveDisplayQuality({
+  required String? filePath,
+  String? fileName,
+  int? bitDepth,
+  int? sampleRate,
+  int? bitrateKbps,
+  String? storedQuality,
+}) {
+  final format = _audioFormatForPath(filePath, fileName: fileName);
+  if (format == 'OPUS' ||
+      format == 'MP3' ||
+      format == 'AAC' ||
+      (format == 'M4A' && (bitDepth == null || bitDepth <= 0))) {
+    return buildDisplayAudioQuality(bitrateKbps: bitrateKbps, format: format) ??
+        _nonPlaceholderQuality(storedQuality) ??
+        format;
+  }
+  return buildDisplayAudioQuality(
+    bitDepth: bitDepth,
+    sampleRate: sampleRate,
+    storedQuality: _nonPlaceholderQuality(storedQuality) ?? storedQuality,
+  );
+}
+
 /// log10 helper using dart:math's natural log.
 double _log10(num x) => log(x) / ln10;
 final _yearRegex = RegExp(r'^(\d{4})');
@@ -689,9 +759,12 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
 
       final bitDepth = _readPositiveInt(result['bit_depth']);
       final sampleRate = _readPositiveInt(result['sample_rate']);
-      final quality = buildDisplayAudioQuality(
+      final bitrateKbps = _readPositiveBitrateKbps(result['bitrate']);
+      final quality = _resolveDisplayQuality(
+        filePath: filePath,
         bitDepth: bitDepth,
         sampleRate: sampleRate,
+        bitrateKbps: bitrateKbps,
         storedQuality: fallbackQuality,
       );
       final composer = normalizeOptionalString(result['composer']?.toString());
@@ -704,6 +777,7 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
       if (quality == null &&
           bitDepth == null &&
           sampleRate == null &&
+          bitrateKbps == null &&
           composer == null &&
           duration == null &&
           trackNumber == null &&
@@ -717,6 +791,7 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
         'quality': quality,
         'bitDepth': bitDepth,
         'sampleRate': sampleRate,
+        'bitrateKbps': bitrateKbps,
         'composer': composer,
         'duration': duration,
         'trackNumber': trackNumber,
@@ -5532,7 +5607,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     var actualQuality = context.quality;
     final actualBitDepth = result['actual_bit_depth'] as int?;
     final actualSampleRate = result['actual_sample_rate'] as int?;
-    final resolvedQuality = buildDisplayAudioQuality(
+    final resolvedQuality = _resolveDisplayQuality(
+      filePath: filePath,
       bitDepth: actualBitDepth,
       sampleRate: actualSampleRate,
       storedQuality: actualQuality,
@@ -7931,6 +8007,9 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
           final backendTotalDiscs = result['total_discs'] as int?;
           final backendBitDepth = result['actual_bit_depth'] as int?;
           final backendSampleRate = result['actual_sample_rate'] as int?;
+          final backendBitrateKbps = _readPositiveBitrateKbps(
+            result['bitrate'] ?? result['actual_bitrate'],
+          );
           final backendISRC = result['isrc'] as String?;
           final backendGenre = result['genre'] as String?;
           final backendLabel = result['label'] as String?;
@@ -7951,6 +8030,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
 
           int? finalBitDepth = backendBitDepth;
           int? finalSampleRate = backendSampleRate;
+          int? finalBitrateKbps = backendBitrateKbps;
           final lowerFilePath = filePath.toLowerCase();
           final canProbeFinalMetadata =
               filePath.startsWith('content://') ||
@@ -7979,10 +8059,19 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
                 if (probedSampleRate != null && probedSampleRate > 0) {
                   finalSampleRate = probedSampleRate;
                 }
+                final probedBitrateKbps = _readPositiveBitrateKbps(
+                  metadata['bitrate'] ?? metadata['bit_rate'],
+                );
+                if (probedBitrateKbps != null && probedBitrateKbps > 0) {
+                  finalBitrateKbps = probedBitrateKbps;
+                }
 
-                final resolvedQuality = buildDisplayAudioQuality(
+                final resolvedQuality = _resolveDisplayQuality(
+                  filePath: filePath,
+                  fileName: finalSafFileName,
                   bitDepth: finalBitDepth,
                   sampleRate: finalSampleRate,
+                  bitrateKbps: finalBitrateKbps,
                   storedQuality: actualQuality,
                 );
                 if (resolvedQuality != null) {

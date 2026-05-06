@@ -110,6 +110,7 @@ object NativeDownloadFinalizer {
         var quality: String,
         var bitDepth: Int?,
         var sampleRate: Int?,
+        var bitrateKbps: Int? = null,
         var pendingExternalLrc: String? = null,
         var pendingExternalLrcFileName: String? = null,
     )
@@ -170,6 +171,8 @@ object NativeDownloadFinalizer {
             quality = requestQuality(effectiveInput),
             bitDepth = optPositiveInt(result, "actual_bit_depth"),
             sampleRate = optPositiveInt(result, "actual_sample_rate"),
+            bitrateKbps = optPositiveBitrateKbps(result, "bitrate")
+                ?: optPositiveBitrateKbps(result, "actual_bitrate"),
         )
 
         try {
@@ -637,10 +640,19 @@ object NativeDownloadFinalizer {
                 state.sampleRate = sampleRate
                 result.put("actual_sample_rate", sampleRate)
             }
+            val bitrateKbps = optPositiveBitrateKbps(metadata, "bitrate")
+                ?: optPositiveBitrateKbps(metadata, "bit_rate")
+            if (bitrateKbps != null) {
+                state.bitrateKbps = bitrateKbps
+                result.put("bitrate", bitrateKbps)
+            }
 
             val displayQuality = displayAudioQuality(
+                filePath = state.filePath,
+                fileName = state.fileName,
                 bitDepth = state.bitDepth,
                 sampleRate = state.sampleRate,
+                bitrateKbps = state.bitrateKbps,
                 storedQuality = state.quality,
             )
             if (displayQuality != null) {
@@ -672,14 +684,64 @@ object NativeDownloadFinalizer {
             lowerName.endsWith(".ogg")
     }
 
-    private fun displayAudioQuality(bitDepth: Int?, sampleRate: Int?, storedQuality: String?): String? {
+    private fun displayAudioQuality(
+        filePath: String,
+        fileName: String,
+        bitDepth: Int?,
+        sampleRate: Int?,
+        bitrateKbps: Int?,
+        storedQuality: String?,
+    ): String? {
+        val format = audioFormatForPath(filePath, fileName)
+        if (format == "OPUS" ||
+            format == "MP3" ||
+            format == "AAC" ||
+            (format == "M4A" && (bitDepth == null || bitDepth <= 0))
+        ) {
+            return if (bitrateKbps != null && bitrateKbps > 0) {
+                "$format ${bitrateKbps}kbps"
+            } else {
+                nonPlaceholderQuality(storedQuality) ?: format
+            }
+        }
+
         if (bitDepth != null && bitDepth > 0 && sampleRate != null && sampleRate > 0) {
             val khz = sampleRate / 1000.0
             val precision = if (sampleRate % 1000 == 0) 0 else 1
             val sampleRateLabel = "%.${precision}f".format(Locale.US, khz)
             return "$bitDepth-bit/${sampleRateLabel}kHz"
         }
-        return normalizeOptional(storedQuality)
+        return nonPlaceholderQuality(storedQuality) ?: normalizeOptional(storedQuality)
+    }
+
+    private fun audioFormatForPath(filePath: String, fileName: String): String? {
+        for (candidate in listOf(filePath, fileName)) {
+            val lower = candidate.trim().lowercase(Locale.ROOT)
+            when {
+                lower.endsWith(".opus") || lower.endsWith(".ogg") -> return "OPUS"
+                lower.endsWith(".mp3") -> return "MP3"
+                lower.endsWith(".aac") -> return "AAC"
+                lower.endsWith(".m4a") || lower.endsWith(".mp4") -> return "M4A"
+            }
+        }
+        return null
+    }
+
+    private fun nonPlaceholderQuality(quality: String?): String? {
+        val normalized = normalizeOptional(quality) ?: return null
+        val key = normalized.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]+"), "_").trim('_')
+        val placeholders = setOf(
+            "best",
+            "lossless",
+            "hi_res",
+            "hires",
+            "hi_res_lossless",
+            "hires_lossless",
+            "high",
+            "cd",
+            "flac_best_available",
+        )
+        return if (placeholders.contains(key)) null else normalized
     }
 
     private fun writeExternalLrc(context: Context, input: FinalizeInput, state: FinalizeState) {
@@ -1896,6 +1958,15 @@ object NativeDownloadFinalizer {
     private fun optPositiveInt(obj: JSONObject, key: String): Int? {
         val value = obj.optInt(key, 0)
         return if (value > 0) value else null
+    }
+
+    private fun optPositiveBitrateKbps(obj: JSONObject, key: String): Int? {
+        val value = optPositiveInt(obj, key) ?: return null
+        return if (value >= 10000) {
+            Math.round(value / 1000.0).toInt()
+        } else {
+            value
+        }
     }
 
     private fun positiveOrNull(primary: Int, fallback: Int): Int? {

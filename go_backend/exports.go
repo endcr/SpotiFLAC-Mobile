@@ -1157,6 +1157,9 @@ func ReadFileMetadata(filePath string) (string, error) {
 				if qualityErr == nil {
 					result["sample_rate"] = quality.SampleRate
 					result["duration"] = quality.Duration
+					if quality.Bitrate > 0 {
+						result["bitrate"] = quality.Bitrate / 1000
+					}
 				}
 			} else {
 				return "", fmt.Errorf("failed to read metadata: %w", err)
@@ -1257,6 +1260,9 @@ func ReadFileMetadata(filePath string) (string, error) {
 			result["bit_depth"] = quality.BitDepth
 			result["sample_rate"] = quality.SampleRate
 			result["duration"] = quality.Duration
+			if quality.Bitrate > 0 {
+				result["bitrate"] = quality.Bitrate / 1000
+			}
 		}
 	} else if isOgg {
 		meta, err := ReadOggVorbisComments(filePath)
@@ -1289,6 +1295,9 @@ func ReadFileMetadata(filePath string) (string, error) {
 		if qualityErr == nil {
 			result["sample_rate"] = quality.SampleRate
 			result["duration"] = quality.Duration
+			if quality.Bitrate > 0 {
+				result["bitrate"] = quality.Bitrate / 1000
+			}
 		}
 	} else if isApe || isWv || isMpc {
 		// APE, WavPack, Musepack: read APEv2 tags
