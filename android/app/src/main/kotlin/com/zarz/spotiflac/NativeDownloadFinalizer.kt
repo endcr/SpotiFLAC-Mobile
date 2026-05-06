@@ -16,6 +16,7 @@ import com.antonkarpenko.ffmpegkit.ReturnCode
 import gobackend.Gobackend
 import org.json.JSONObject
 import java.io.File
+import java.nio.ByteBuffer
 import java.util.Locale
 import java.util.concurrent.CancellationException
 import java.util.concurrent.CountDownLatch
@@ -835,7 +836,7 @@ object NativeDownloadFinalizer {
             .put("isrc", trackString(input, "isrc", input.request.optString("isrc", "")))
             .put("release_date", trackString(input, "releaseDate", input.request.optString("release_date", "")))
             .put("duration_ms", trackInt(input, "duration", 0) * 1000)
-            .put("cover_url", trackString(input, "coverUrl", input.request.optString("cover_url", "")))
+            .put("cover_url", metadataCoverUrl(input))
 
         if (state.filePath.startsWith("content://")) {
             val uri = state.filePath
@@ -1011,9 +1012,10 @@ object NativeDownloadFinalizer {
         val inputFile = File(path)
         val temp = File(inputFile.parentFile, "${inputFile.nameWithoutExtension}_tagged$ext")
         val isM4a = format == "m4a"
-        val coverFile = if (isM4a) downloadCoverForMetadata(context, input) else null
+        val isOpus = format == "opus"
+        val coverFile = if (isM4a || isOpus) downloadCoverForMetadata(context, input) else null
         val labelKey = if (isM4a) "organization" else "label"
-        val metadataArgs = listOf(
+        val metadataPairs = mutableListOf(
             "title" to title,
             "artist" to artist,
             "album" to album,
@@ -1029,6 +1031,12 @@ object NativeDownloadFinalizer {
             "lyrics" to if (shouldEmbedLyrics) lyrics else "",
             "unsyncedlyrics" to if (shouldEmbedLyrics) lyrics else "",
         )
+        if (isOpus && coverFile != null) {
+            createMetadataBlockPicture(coverFile)?.let {
+                metadataPairs.add("METADATA_BLOCK_PICTURE" to it)
+            }
+        }
+        val metadataArgs = metadataPairs
             .filter { it.second.isNotBlank() && it.second != "0" }
             .joinToString(" ") { "-metadata ${it.first}=${q(it.second)}" }
         if (metadataArgs.isBlank() && coverFile == null) return
@@ -1036,7 +1044,7 @@ object NativeDownloadFinalizer {
         var adoptedTemp = false
         var originalDeleted = false
         try {
-            val command = if (coverFile != null) {
+            val command = if (isM4a && coverFile != null) {
                 "-v error -hide_banner -i ${q(path)} -i ${q(coverFile.absolutePath)} " +
                     "-map 0:a -c:a copy -map_metadata 0 -map 1:v -c:v copy " +
                     "-disposition:v:0 attached_pic " +
@@ -1061,15 +1069,56 @@ object NativeDownloadFinalizer {
         }
     }
 
+    private fun createMetadataBlockPicture(coverFile: File): String? {
+        return try {
+            if (!coverFile.exists() || coverFile.length() <= 0L) return null
+            val imageData = coverFile.readBytes()
+            if (imageData.isEmpty()) return null
+            val mimeType = detectCoverMimeType(coverFile, imageData)
+            val mimeBytes = mimeType.toByteArray(Charsets.UTF_8)
+            val descriptionBytes = ByteArray(0)
+            val blockSize = 4 + 4 + mimeBytes.size + 4 + descriptionBytes.size + 4 + 4 + 4 + 4 + 4 + imageData.size
+            val buffer = ByteBuffer.allocate(blockSize)
+            buffer.putInt(3)
+            buffer.putInt(mimeBytes.size)
+            buffer.put(mimeBytes)
+            buffer.putInt(descriptionBytes.size)
+            buffer.put(descriptionBytes)
+            buffer.putInt(0)
+            buffer.putInt(0)
+            buffer.putInt(0)
+            buffer.putInt(0)
+            buffer.putInt(imageData.size)
+            buffer.put(imageData)
+            Base64.encodeToString(buffer.array(), Base64.NO_WRAP)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to create Opus cover picture block: ${e.message}")
+            null
+        }
+    }
+
+    private fun detectCoverMimeType(coverFile: File, imageData: ByteArray): String {
+        val ext = coverFile.extension.lowercase(Locale.ROOT)
+        if (ext == "png") return "image/png"
+        if (ext == "jpg" || ext == "jpeg") return "image/jpeg"
+        if (imageData.size >= 8 &&
+            imageData[0] == 0x89.toByte() &&
+            imageData[1] == 0x50.toByte() &&
+            imageData[2] == 0x4E.toByte() &&
+            imageData[3] == 0x47.toByte()
+        ) {
+            return "image/png"
+        }
+        return "image/jpeg"
+    }
+
     private fun formatIndexTag(number: Int, total: Int): String {
         if (number <= 0) return "0"
         return if (total > 0) "$number/$total" else number.toString()
     }
 
     private fun downloadCoverForMetadata(context: Context, input: FinalizeInput): File? {
-        val coverUrl = resultString(input, "cover_url").ifBlank {
-            trackString(input, "coverUrl", requestString(input, "cover_url"))
-        }
+        val coverUrl = metadataCoverUrl(input).ifBlank { resultString(input, "cover_url") }
         if (coverUrl.isBlank()) return null
 
         val safeItemId = input.itemId.ifBlank { "item" }.replace(Regex("[^A-Za-z0-9._-]"), "_")
@@ -1472,7 +1521,7 @@ object NativeDownloadFinalizer {
         values.put("artist_name", result.optString("artist", "").ifBlank { trackString(input, "artistName", input.request.optString("artist_name", "")) })
         values.put("album_name", result.optString("album", "").ifBlank { trackString(input, "albumName", input.request.optString("album_name", "")) })
         values.put("album_artist", normalizeOptional(resultString(input, "album_artist").ifBlank { trackString(input, "albumArtist", requestString(input, "album_artist")) }))
-        values.put("cover_url", normalizeOptional(resultString(input, "cover_url").ifBlank { trackString(input, "coverUrl", requestString(input, "cover_url")) }))
+        values.put("cover_url", normalizeOptional(metadataCoverUrl(input).ifBlank { resultString(input, "cover_url") }))
         values.put("file_path", state.filePath)
         values.put("storage_mode", input.request.optString("storage_mode", "app"))
         values.put("download_tree_uri", normalizeOptional(input.request.optString("saf_tree_uri", "")))
@@ -1949,6 +1998,9 @@ object NativeDownloadFinalizer {
 
     private fun resultString(input: FinalizeInput, key: String): String =
         cleanMetadataString(input.result.optString(key, ""))
+
+    private fun metadataCoverUrl(input: FinalizeInput): String =
+        trackString(input, "coverUrl", requestString(input, "cover_url"))
 
     private fun trackInt(input: FinalizeInput, key: String, fallback: Int): Int {
         val value = input.track.optInt(key, 0)

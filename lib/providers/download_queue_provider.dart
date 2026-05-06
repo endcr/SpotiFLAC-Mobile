@@ -4393,6 +4393,8 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
     final backendCoverUrl = normalizeCoverReference(
       backendResult['cover_url']?.toString(),
     );
+    final baseCoverUrl = normalizeCoverReference(baseTrack.coverUrl);
+    final resolvedCoverUrl = baseCoverUrl ?? backendCoverUrl;
     final backendAlbumArtist = normalizeOptionalString(
       backendResult['album_artist'] as String?,
     );
@@ -4406,7 +4408,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
         backendYear != null ||
         backendAlbum != null ||
         backendIsrc != null ||
-        backendCoverUrl != null ||
+        (baseCoverUrl == null && backendCoverUrl != null) ||
         backendAlbumArtist != null ||
         backendComposer != null ||
         backendTotalTracks != null ||
@@ -4424,7 +4426,7 @@ class DownloadQueueNotifier extends Notifier<DownloadQueueState> {
       albumArtist: backendAlbumArtist ?? resolvedAlbumArtist,
       artistId: baseTrack.artistId,
       albumId: baseTrack.albumId,
-      coverUrl: backendCoverUrl ?? baseTrack.coverUrl,
+      coverUrl: resolvedCoverUrl,
       duration: baseTrack.duration,
       isrc: backendIsrc ?? baseTrack.isrc,
       trackNumber: backendTrackNum ?? baseTrack.trackNumber,
