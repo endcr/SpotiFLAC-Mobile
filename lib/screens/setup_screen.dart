@@ -681,7 +681,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Image.asset(
-                  'assets/images/logo-transparant.png',
+                  'assets/images/logo-transparent.png',
                   width: logoSize,
                   height: logoSize,
                   color: colorScheme.primary,

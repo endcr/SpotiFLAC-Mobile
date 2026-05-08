@@ -302,7 +302,7 @@ class _AppHeaderCard extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: Image.asset(
-                  'assets/images/logo-transparant.png',
+                  'assets/images/logo-transparent.png',
                   color: colorScheme.onPrimary,
                   fit: BoxFit.contain,
                   errorBuilder: (_, _, _) => ClipRRect(

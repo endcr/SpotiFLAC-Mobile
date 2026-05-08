@@ -22,6 +22,7 @@ import 'package:spotiflac_android/utils/lyrics_metadata_helper.dart';
 import 'package:spotiflac_android/utils/mime_utils.dart';
 import 'package:spotiflac_android/utils/image_cache_utils.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
+import 'package:spotiflac_android/utils/int_utils.dart';
 import 'package:spotiflac_android/widgets/audio_analysis_widget.dart';
 import 'package:spotiflac_android/widgets/cached_cover_image.dart';
 
@@ -365,9 +366,9 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
         return;
       }
 
-      final resolvedBitDepth = _readPositiveInt(metadata['bit_depth']);
-      final resolvedSampleRate = _readPositiveInt(metadata['sample_rate']);
-      final resolvedDuration = _readPositiveInt(metadata['duration']);
+      final resolvedBitDepth = readPositiveInt(metadata['bit_depth']);
+      final resolvedSampleRate = readPositiveInt(metadata['sample_rate']);
+      final resolvedDuration = readPositiveInt(metadata['duration']);
       final resolvedAlbum = metadata['album']?.toString();
       final resolvedQuality = buildDisplayAudioQuality(
         bitDepth: resolvedBitDepth ?? bitDepth,
@@ -386,10 +387,10 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
 
       // Resolve label/copyright from file when the model doesn't carry them
       // (e.g. local library items, or download history items without these fields).
-      final resolvedTrackNumber = _readPositiveInt(metadata['track_number']);
-      final resolvedTotalTracks = _readPositiveInt(metadata['total_tracks']);
-      final resolvedDiscNumber = _readPositiveInt(metadata['disc_number']);
-      final resolvedTotalDiscs = _readPositiveInt(metadata['total_discs']);
+      final resolvedTrackNumber = readPositiveInt(metadata['track_number']);
+      final resolvedTotalTracks = readPositiveInt(metadata['total_tracks']);
+      final resolvedDiscNumber = readPositiveInt(metadata['disc_number']);
+      final resolvedTotalDiscs = readPositiveInt(metadata['total_discs']);
       final resolvedComposer = metadata['composer']?.toString();
       final resolvedLabel = metadata['label']?.toString();
       final resolvedCopyright = metadata['copyright']?.toString();
@@ -614,7 +615,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
   }
 
   int? get totalTracks =>
-      _readPositiveInt(_editedMetadata?['total_tracks']) ??
+      readPositiveInt(_editedMetadata?['total_tracks']) ??
       (_isLocalItem
           ? _localLibraryItem!.totalTracks
           : _downloadItem!.totalTracks);
@@ -631,7 +632,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
   }
 
   int? get totalDiscs =>
-      _readPositiveInt(_editedMetadata?['total_discs']) ??
+      readPositiveInt(_editedMetadata?['total_discs']) ??
       (_isLocalItem
           ? _localLibraryItem!.totalDiscs
           : _downloadItem!.totalDiscs);
@@ -670,13 +671,13 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
       _editedMetadata?['composer']?.toString() ??
       (_isLocalItem ? _localLibraryItem!.composer : null);
   int? get duration =>
-      _readPositiveInt(_editedMetadata?['duration']) ??
+      readPositiveInt(_editedMetadata?['duration']) ??
       (_isLocalItem ? _localLibraryItem!.duration : _downloadItem!.duration);
   int? get bitDepth =>
-      _readPositiveInt(_editedMetadata?['bit_depth']) ??
+      readPositiveInt(_editedMetadata?['bit_depth']) ??
       (_isLocalItem ? _localLibraryItem!.bitDepth : _downloadItem!.bitDepth);
   int? get sampleRate =>
-      _readPositiveInt(_editedMetadata?['sample_rate']) ??
+      readPositiveInt(_editedMetadata?['sample_rate']) ??
       (_isLocalItem
           ? _localLibraryItem!.sampleRate
           : _downloadItem!.sampleRate);
@@ -705,17 +706,6 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
   }
 
   String? get _quality => _isLocalItem ? null : _downloadItem!.quality;
-
-  int? _readPositiveInt(dynamic value) {
-    if (value == null) return null;
-    if (value is num) {
-      final asInt = value.toInt();
-      return asInt > 0 ? asInt : null;
-    }
-    final parsed = int.tryParse(value.toString());
-    if (parsed == null || parsed <= 0) return null;
-    return parsed;
-  }
 
   String _displayServiceTrackId(String value) {
     final raw = value.trim();
@@ -4394,7 +4384,7 @@ class _TrackMetadataScreenState extends ConsumerState<TrackMetadataScreen> {
     };
 
     final initialDurationSeconds =
-        _readPositiveInt(fileMetadata?['duration']) ?? duration ?? 0;
+        readPositiveInt(fileMetadata?['duration']) ?? duration ?? 0;
 
     if (!context.mounted) return;
 

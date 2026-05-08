@@ -21,6 +21,7 @@ import 'package:spotiflac_android/utils/logger.dart' hide log;
 import 'package:spotiflac_android/utils/file_access.dart';
 import 'package:spotiflac_android/utils/string_utils.dart';
 import 'package:spotiflac_android/utils/artist_utils.dart';
+import 'package:spotiflac_android/utils/int_utils.dart';
 
 export 'package:spotiflac_android/services/history_database.dart'
     show HistoryLookupRequest, HistoryBatchLookupRequest;
@@ -34,19 +35,8 @@ final _trimUnderscoresAndSpacesRegex = RegExp(r'^[_ ]+|[_ ]+$');
 final _multiWhitespaceRegex = RegExp(r'\s+');
 final _multiUnderscoreRegex = RegExp(r'_+');
 
-int? _readPositiveIntValue(dynamic value) {
-  if (value == null) return null;
-  if (value is num) {
-    final asInt = value.toInt();
-    return asInt > 0 ? asInt : null;
-  }
-  final parsed = int.tryParse(value.toString());
-  if (parsed == null || parsed <= 0) return null;
-  return parsed;
-}
-
 int? _readPositiveBitrateKbps(dynamic value) {
-  final parsed = _readPositiveIntValue(value);
+  final parsed = readPositiveInt(value);
   if (parsed == null) return null;
   return parsed >= 10000 ? (parsed / 1000).round() : parsed;
 }
@@ -666,17 +656,6 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
     }
   }
 
-  int? _readPositiveInt(dynamic value) {
-    if (value == null) return null;
-    if (value is num) {
-      final asInt = value.toInt();
-      return asInt > 0 ? asInt : null;
-    }
-    final parsed = int.tryParse(value.toString());
-    if (parsed == null || parsed <= 0) return null;
-    return parsed;
-  }
-
   bool _supportsAudioMetadataProbe(String filePath) {
     final trimmed = filePath.trim().toLowerCase();
     if (trimmed.isEmpty) return false;
@@ -757,8 +736,8 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
         return null;
       }
 
-      final bitDepth = _readPositiveInt(result['bit_depth']);
-      final sampleRate = _readPositiveInt(result['sample_rate']);
+      final bitDepth = readPositiveInt(result['bit_depth']);
+      final sampleRate = readPositiveInt(result['sample_rate']);
       final bitrateKbps = _readPositiveBitrateKbps(result['bitrate']);
       final quality = _resolveDisplayQuality(
         filePath: filePath,
@@ -768,11 +747,11 @@ class DownloadHistoryNotifier extends Notifier<DownloadHistoryState> {
         storedQuality: fallbackQuality,
       );
       final composer = normalizeOptionalString(result['composer']?.toString());
-      final duration = _readPositiveInt(result['duration']);
-      final trackNumber = _readPositiveInt(result['track_number']);
-      final totalTracks = _readPositiveInt(result['total_tracks']);
-      final discNumber = _readPositiveInt(result['disc_number']);
-      final totalDiscs = _readPositiveInt(result['total_discs']);
+      final duration = readPositiveInt(result['duration']);
+      final trackNumber = readPositiveInt(result['track_number']);
+      final totalTracks = readPositiveInt(result['total_tracks']);
+      final discNumber = readPositiveInt(result['disc_number']);
+      final totalDiscs = readPositiveInt(result['total_discs']);
 
       if (quality == null &&
           bitDepth == null &&
